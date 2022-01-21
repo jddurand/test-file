@@ -57,7 +57,7 @@ matter the permissions.
 Some attributes don't make sense outside of Unix, either, so some
 tests automatically skip if they think they won't work on the
 platform.  If you have a way to make these functions work on Windows,
-for instance, please send me a patch. :) IF you want to pretend to be
+for instance, please send me a patch. :) If you want to pretend to be
 Windows on a non-Windows machine (for instance, to test C<skip()>),
 you can set the C<PRETEND_TO_BE_WINDOWS> environment variable.
 
