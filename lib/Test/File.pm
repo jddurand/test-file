@@ -69,6 +69,24 @@ generated.
 
 =cut
 
+sub _is_plain_file {
+	my $filename = _normalize( shift );
+
+	my $message = do {
+		   if( ! -e $filename ) { "does not exist" }
+		elsif( ! -f _ )         { "is not a plain file" }
+		elsif( -d _ )           { "is a directory"  }
+		else { () }
+		};
+
+	if( $message ) {
+		$Test->diag( "file [$filename] $message");
+		return 0;
+		}
+
+	return 1;
+	}
+
 sub _normalize {
 	my $file = shift;
 	return unless defined $file;
@@ -164,18 +182,7 @@ sub file_empty_ok {
 	my $filename = _normalize( shift );
 	my $name     = shift || "$filename is empty";
 
-	unless( -e $filename ) {
-		$Test->diag( "File [$filename] does not exist!" );
-		return $Test->ok(0, $name);
-		}
-
-	unless( -f $filename ) {
-		$Test->diag( "File [$filename] is not a plain file, which is deprecated for file_empty_ok" );
-		}
-
-	if( -d $filename ) {
-		$Test->diag( "File [$filename] is a directory, which is deprecated for file_empty_ok" );
-		}
+	return $Test->ok( 0, $name ) unless _is_plain_file( $filename );
 
 	my $ok = -z $filename;
 
@@ -202,18 +209,7 @@ sub file_not_empty_ok {
 	my $filename = _normalize( shift );
 	my $name     = shift || "$filename is not empty";
 
-	unless( -e $filename ) {
-		$Test->diag( "File [$filename] does not exist!" );
-		return $Test->ok(0, $name);
-		}
-
-	unless( -f $filename ) {
-		$Test->diag( "File [$filename] is a directory, which is deprecated for file_not_empty_ok" );
-		}
-
-	if( -d $filename ) {
-		$Test->diag( "File [$filename] is a directory, which is deprecated for file_not_empty_ok" );
-		}
+	return $Test->ok( 0, $name ) unless _is_plain_file( $filename );
 
 	my $ok = not -z _;
 
@@ -241,18 +237,7 @@ sub file_size_ok {
 	my $expected = int shift;
 	my $name     = shift || "$filename has right size";
 
-	unless( -e $filename ) {
-		$Test->diag( "File [$filename] does not exist!" );
-		return $Test->ok(0, $name);
-		}
-
-	unless( -f $filename ) {
-		$Test->diag( "File [$filename] is a directory, which is deprecated for file_size_ok" );
-		}
-
-	if( -d $filename ) {
-		$Test->diag( "File [$filename] is a directory, which is deprecated for file_size_ok" );
-		}
+	return $Test->ok( 0, $name ) unless _is_plain_file( $filename );
 
 	my $ok = ( -s $filename ) == $expected;
 
@@ -284,18 +269,7 @@ sub file_max_size_ok {
 	my $max      = int shift;
 	my $name     = shift || "$filename is under $max bytes";
 
-	unless( -e $filename ) {
-		$Test->diag( "File [$filename] does not exist!" );
-		return $Test->ok(0, $name);
-		}
-
-	unless( -f $filename ) {
-		$Test->diag( "File [$filename] is a directory, which is deprecated for file_max_size_ok" );
-		}
-
-	if( -d $filename ) {
-		$Test->diag( "File [$filename] is a directory, which is deprecated for file_max_size_ok" );
-		}
+	return $Test->ok( 0, $name ) unless _is_plain_file( $filename );
 
 	my $ok = ( -s $filename ) <= $max;
 
@@ -329,18 +303,7 @@ sub file_min_size_ok {
 	my $min      = int shift;
 	my $name     = shift || "$filename is over $min bytes";
 
-	unless( -e $filename ) {
-		$Test->diag( "File [$filename] does not exist!" );
-		return $Test->ok(0, $name);
-		}
-
-	unless( -f $filename ) {
-		$Test->diag( "File [$filename] is a directory, which is deprecated for file_min_size_ok" );
-		}
-
-	if( -d $filename ) {
-		$Test->diag( "File [$filename] is a directory, which is deprecated for file_min_size_ok" );
-		}
+	return $Test->ok( 0, $name ) unless _is_plain_file( $filename );
 
 	my $ok = ( -s $filename ) >= $min;
 
@@ -398,41 +361,35 @@ sub file_line_count_is {
 		shift || "$filename line count is $expected lines";
 		};
 
-	unless( ! -e $filename or -f $filename ) {
-		$Test->diag( "File [$filename] is not a plain file, which is deprecated for file_line_count_is" );
-		}
-
-	if( -d $filename ) {
-		$Test->diag( "File [$filename] is a directory, which is deprecated for file_line_count_is" );
-		}
+	return $Test->ok( 0, $name ) unless _is_plain_file( $filename );
 
 	unless( defined $expected && int( $expected ) == $expected ) {
 		no warnings 'uninitialized';
 		$Test->diag( "file_line_count_is expects a positive whole number for " .
-			"the second argument. Got [$expected]!" );
+			"the second argument. Got [$expected]" );
 		return $Test->ok( 0, $name );
 		}
 
 	my $got = _file_line_counter( $filename );
 
 	if( $got eq _ENOFILE ) {
-		$Test->diag( "File [$filename] does not exist!" );
+		$Test->diag( "file [$filename] does not exist" );
 		$Test->ok( 0, $name );
 		}
 	elsif( $got eq _ENOTPLAIN ) {
-		$Test->diag( "File [$filename] is not a plain file!" );
+		$Test->diag( "file [$filename] is not a plain file" );
 		$Test->ok( 0, $name );
 		}
 	elsif( $got == _ECANTOPEN ) {
-		$Test->diag( "Could not open [$filename]: \$! is [$!]!" );
+		$Test->diag( "file [$filename] could not be opened: \$! is [$!]" );
 		$Test->ok( 0, $name );
 		}
 	elsif( $got == $expected ) {
 		$Test->ok( 1, $name );
 		}
 	else {
-		$Test->diag( "Expected [$expected] lines in [$filename], " .
-			"got [$got] lines!" );
+		$Test->diag( "expected [$expected] lines in [$filename], " .
+			"got [$got] lines" );
 		$Test->ok( 0, $name );
 		}
 
@@ -460,13 +417,7 @@ sub file_line_count_isnt {
 		shift || "$filename line count is not $expected lines";
 		};
 
-	unless( ! -e $filename or -f $filename ) {
-		$Test->diag( "File [$filename] is not a plain file, which is deprecated for file_line_count_isnt" );
-		}
-
-	if( -d $filename ) {
-		$Test->diag( "File [$filename] is a directory, which is deprecated for file_line_count_isnt" );
-		}
+	return $Test->ok( 0, $name ) unless _is_plain_file( $filename );
 
 	unless( defined $expected && int( $expected ) == $expected ) {
 		no warnings 'uninitialized';
@@ -518,18 +469,11 @@ sub file_line_count_between {
 	my $min      = shift;
 	my $max      = shift;
 
-	unless( ! -e $filename or -f $filename ) {
-		$Test->diag( "File [$filename] is not a plain file, which is deprecated for file_line_count_between" );
-		}
-
-	if( -d $filename ) {
-		$Test->diag( "File [$filename] is a directory, which is deprecated for file_line_count_between" );
-		}
-
 	my $name = do {
 		no warnings 'uninitialized';
 		shift || "$filename line count is between [$min] and [$max] lines";
 		};
+	return $Test->ok( 0, $name ) unless _is_plain_file( $filename );
 
 	foreach my $ref ( \$min, \$max ) {
 		unless( defined $$ref && int( $$ref ) == $$ref ) {
@@ -696,15 +640,7 @@ sub _file_contains {
 	# test name as the name
 	$name = $patterns{$patterns[0]};
 
-	unless( -e $filename ) {
-		$Test->diag( "File [$filename] does not exist!" );
-		return $Test->ok(0, $name);
-		}
-
-	if( -d $filename ) {
-		my $caller = ( caller(0) )[3];
-		$Test->diag( "File [$filename] is a directory, which is deprecated for $caller" );
-		}
+	return $Test->ok( 0, $name ) unless _is_plain_file( $filename );
 
 	unless( -r $filename ) {
 		$Test->diag( "File [$filename] is not readable!" );
